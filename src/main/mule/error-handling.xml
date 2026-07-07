@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd">
+	<error-handler name="error-handlingError_Handler" doc:id="0f51f315-745e-4fa8-8b89-d6c6db6cfceb" >
+		<on-error-propagate type="VALIDATION:BAD_REQUEST">
+                <set-variable value="400" doc:name="400" doc:id="118952d4-7e50-47ca-a2b1-f8e3ec944cb1" variableName="httpStatus" />
+                <set-payload value="#[{message: (error.description default &quot;Bad Request&quot;), errorType: error.errorType}]" doc:name="Set Payload" doc:id="dd6b52af-c5df-4f77-afab-bd7ad5d9f942" />
+			<logger level="INFO" doc:name="Logger" doc:id="8f134ce5-3fb0-4891-ac93-7f2acd87cde9" message="#[payload]"/>
+            
+</on-error-propagate>
+			<on-error-propagate type="ANY">
+                <set-variable value="500" doc:name="500" doc:id="42f0aa5a-84b3-4e9c-ab3d-85187d5895fc" variableName="httpStatus" />
+                <set-payload value='#[{message: (error.description default "Internal Server error"), errorType: error.errorType}]' />
+			<logger level="INFO" doc:name="Logger" doc:id="6ab7aeda-361e-4218-bb6a-558e647d393d" message="#[payload]"/>
+            
+</on-error-propagate>
+	</error-handler>
+</mule>

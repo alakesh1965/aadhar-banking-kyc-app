@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:crypto="http://www.mulesoft.org/schema/mule/crypto"
+	xmlns:db="http://www.mulesoft.org/schema/mule/db" xmlns:http="http://www.mulesoft.org/schema/mule/http"
+	xmlns="http://www.mulesoft.org/schema/mule/core"
+	xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="
+http://www.mulesoft.org/schema/mule/db http://www.mulesoft.org/schema/mule/db/current/mule-db.xsd http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/crypto http://www.mulesoft.org/schema/mule/crypto/current/mule-crypto.xsd">
+	<http:listener-config name="HTTP_Listener_config" doc:name="HTTP Listener config" doc:id="9d2b0615-7d81-4085-a728-61d4cb861681" >
+		<http:listener-connection host="${http.internal.host}" port="${http.internal.port}" />
+	</http:listener-config>
+	<http:request-config name="HTTP_Request_configuration" doc:name="HTTP Request configuration" doc:id="2db974ea-accd-403a-b75b-1c35910da2ea" responseTimeout="${responseTimeout}">
+		<http:request-connection host="${http.host}" port="${http.port}" />
+	</http:request-config>
+	<configuration doc:name="Configuration" doc:id="c9a81104-4e2d-4277-85ed-514c3737d50f" defaultErrorHandler-ref="error-handlingError_Handler" />
+	<http:request-config name="OCR_HTTP_Config" doc:name="HTTP Request configuration" doc:id="d9fb31a3-efc4-486a-819d-8a4f73859c9b" >
+		<http:request-connection host="api.ocr.space" port="443" protocol="HTTPS"/>
+	</http:request-config>
+	<configuration-properties doc:name="Configuration properties" doc:id="58a8a425-443d-4e68-b604-dbee65050212" file="config\exp-baning-kyc.properties" />
+	<http:listener-config name="HTTP_Listener_config1" doc:name="HTTP Listener config" doc:id="fb0c28e2-2e20-4b80-8641-b456ebbcfa23" >
+		<http:listener-connection host="0.0.0.0" port="8082" />
+	</http:listener-config>
+	<db:config name="Database_Config" doc:name="Database Config" doc:id="ec8d5c26-dec6-4797-a1d7-8473dbee0d9d" >
+		<db:my-sql-connection host="${db.host}" port="${db.port}" user="${db.user}" password="${db.password}" database="${db.databaseName}" />
+	</db:config>
+</mule>

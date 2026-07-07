@@ -1,0 +1,4 @@
+%dw 2.0
+
+type auto_2cc08010_c556_49c5_9fee_256adb09d965_Input_Variables_accountID = String | Null
+

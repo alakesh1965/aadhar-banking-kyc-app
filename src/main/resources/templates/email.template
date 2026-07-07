@@ -1,0 +1,16 @@
+
+Dear #[payload.customer_name],
+
+This is to inform you that the KYC process for your account is currently in progress.
+
+Account Details:
+- Account ID       : #[payload.AccountId]
+- Mobile Number    : #[payload.Mobile_Number]
+- Current Status   : #[payload.status]
+- Notification     : #[payload.Notification]
+- Document Ref     : #[(payload.document_ref default "Not Available")]
+
+Our team will notify you once the KYC process is completed.
+
+Regards,
+KYC Support Team

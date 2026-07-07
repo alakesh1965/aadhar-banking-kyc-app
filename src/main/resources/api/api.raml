@@ -1,0 +1,18 @@
+#%RAML 1.0
+title: KYC Experience API
+version: v1
+baseUri: /kyc/v1
+
+/upload:
+  post:
+    body:
+      multipart/form-data:
+        properties:
+          file:
+            type: file
+            required: true
+    responses:
+      200:
+        body:
+          application/json:
+            example: { status: "ok" }

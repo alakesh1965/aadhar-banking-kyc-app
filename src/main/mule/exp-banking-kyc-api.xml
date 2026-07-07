@@ -1,0 +1,239 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:db="http://www.mulesoft.org/schema/mule/db"
+	xmlns:http="http://www.mulesoft.org/schema/mule/http"
+	xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+	xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="
+http://www.mulesoft.org/schema/mule/db http://www.mulesoft.org/schema/mule/db/current/mule-db.xsd 
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd 
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd">
+	<flow name="exp-banking-aadhaar-kyc-api">
+        <http:listener config-ref="HTTP_Listener_config" path="/kyc/v1/upload" allowedMethods="POST" />
+		<set-variable variableName="docType" value="#[attributes.headers.'x-document-type' default null]" doc:name="docType" />
+		<set-variable value="#[attributes.headers.'accountID']" doc:name="accountID" doc:id="2f043711-ad37-4c93-a8ce-aa2bc6bd6d14" variableName="accountID"/>
+		<choice>
+            <when expression='#[payload != null and vars.docType == "AADHAAR"]'>
+				<set-variable variableName="fileContent" value="#[payload.parts.file.content]" doc:name="fileContent" />
+				<logger level="INFO" doc:name="File Recieved" doc:id="5fdfc53e-1e49-4681-a091-5f7c951ad620" message="File Recieved" />
+				<ee:transform doc:name="toBase64" doc:id="f6a04816-352a-4645-96e0-a25310cfdd4a">
+            <ee:message>
+				<ee:set-payload resource="dwl/toBase64.dwl" />
+            
+</ee:message>
+        </ee:transform>
+				<set-payload value="#[payload.fileBase64]" doc:name="extract fileBase64" doc:id="2c5851b7-760c-463a-baab-6c7abb9fd482" />
+				<http:request method="POST" sendBodyMode="ALWAYS" doc:name="prc-banking-aadhaar-kyc-api-call" config-ref="HTTP_Request_configuration" path="/kyc/v1/process">
+			<http:headers><![CDATA[#[output application/java
+---
+{
+	accountID : vars.accountID,
+	docType : vars.docType
+}]]]></http:headers>
+
+    </http:request>
+            
+</when>
+			<when expression='#[payload != null and vars.docType == "AADHAAR DATA"]'>
+				<logger level="INFO" doc:name="Payload Recieved" doc:id="84db7962-f4b4-48cc-b4fe-075e945a854f" message="Payload Recieved"/>
+				<flow-ref doc:name="prc-banking-kyc-apiSub_Flow" doc:id="2aaf3ebf-0b24-4ba9-b298-1b53c4bcba97" name="prc-banking-kyc-apiSub_Flow"/>
+			</when>
+			<otherwise>
+				<set-payload value='#[{message: "File part missing or Document type is not AADHAAR"}]' doc:name="File part missing"/>
+				<set-variable variableName="httpStatus" value="400" doc:name="httpStatus:400"/>
+				<raise-error type="VALIDATION:BAD_REQUEST" description="No file uploaded" doc:name="VALIDATION:BAD_REQUEST"/>
+            </otherwise>
+        </choice>
+		<set-payload value="#[payload]" doc:name="Set Payload" doc:id="ca1b455f-9833-4746-afd1-dbdccf1c88c0" />
+		<error-handler ref="error-handlingError_Handler">
+			
+		</error-handler>
+    </flow>
+	<flow name="prc-banking-aadhaar-kyc-app" doc:id="99d9f11b-7554-4350-b7c5-f26c82c63519" >
+		<http:listener doc:name="Listener" doc:id="3f3c045e-d75d-49e7-a2b0-36a411caebe0" config-ref="HTTP_Listener_config1" path="/kyc/v1/process" allowedMethods="POST" />
+		<choice doc:name="Choice" doc:id="15d6f576-2c7a-47ab-a6d6-f1c0d610191f" >
+			<when expression="#[payload != null]" >
+				<logger level="INFO" doc:name="Logger" doc:id="938362cd-4180-44eb-b000-d180346c46db" message="File Base64 Recieved" />
+				<ee:transform doc:name="Store Attributes" doc:id="bdc87948-1334-49e2-b3f0-4aabbaddab40" >
+					<ee:message >
+					</ee:message>
+					<ee:variables >
+						<ee:set-variable variableName="docType" ><![CDATA[%dw 2.0
+output application/java
+---
+attributes.headers.docType]]></ee:set-variable>
+						<ee:set-variable variableName="accountID" ><![CDATA[%dw 2.0
+output application/java
+---
+attributes.headers.accountID]]></ee:set-variable>
+					</ee:variables>
+				</ee:transform>
+			
+
+</when>
+			<otherwise>
+				<raise-error doc:name="Raise error" doc:id="9dad63a5-7408-4c94-b63a-92f132983a72" type="VALIDATION:BAD_REQUEST" description="fileBase64 missing" />
+
+			</otherwise>
+		
+</choice>
+		<http:request method="POST" doc:name="sys-banking-kyc-api-ocr-call" doc:id="9462a51b-6db1-4c29-8006-f6d40ded6cae" config-ref="HTTP_Request_configuration" path="/sys/ocr/v1/ocr">
+		</http:request>
+		<set-payload value="#[payload]" doc:name="Set Payload" doc:id="524b9f28-7d77-4c82-9901-9b39eaa47fca" />
+		<flow-ref doc:name="prc-banking-kyc-apiSub_Flow" doc:id="0344c5a3-a0d6-4a56-a42c-6c0a1d4d658c" name="prc-banking-kyc-apiSub_Flow"/>
+		<error-handler ref="error-handlingError_Handler" />
+	
+</flow>
+	<sub-flow name="prc-banking-kyc-apiSub_Flow" doc:id="2cc08010-c556-49c5-9fee-256adb09d965" >
+		<ee:transform doc:name="Masking" doc:id="c47cb775-6ff4-4ff6-90b1-625c9be2e067">
+			<ee:message>
+				<ee:set-payload resource="dwl/masking.dwl" />
+			</ee:message>
+		</ee:transform>
+		<http:request method="POST" doc:name="sys-persist-kyc-api" doc:id="1123727f-f9b6-445e-9d52-ed990ddc671a" config-ref="HTTP_Request_configuration" path="/sys/persist/v1/kyc">
+			<http:headers><![CDATA[#[output application/java
+---
+{
+	accountID : vars.accountID,
+	docType : vars.docType
+}]]]></http:headers>
+		</http:request>
+		<set-payload value="#[payload]" doc:name="Set Payload" doc:id="2ac74ff7-21dc-4d73-b222-fde2acdaf0c2" />
+		<ee:transform doc:name="Payload-to exp" doc:id="5e737d23-6ccd-428a-a7cb-a484718ab193">
+			<ee:message>
+			</ee:message>
+			<ee:variables>
+				<ee:set-variable resource="dwl/expPayload.dwl" variableName="expPayload" />
+			</ee:variables>
+		</ee:transform>
+		<set-variable value='#["KYC Status"]' doc:name="Email Subject" doc:id="df017daa-64a7-4c21-acea-db461f8b5c86" variableName="subject" />
+		<logger level="INFO" doc:name="Logger" doc:id="5abb1418-bad5-46d1-9357-2ccf26a9cca0" message="#[payload]" />
+		<parse-template doc:name="Prepare Email Content" doc:id="d1e2cfa2-1e66-4054-9d82-1c38be7c013e" location="templates/email.template" />
+		<logger level="INFO" doc:name="payload for mail" doc:id="db81bffb-215d-4a4c-818c-5aae370e5dce" message="#[payload]" />
+		<http:request method="POST" doc:name="send-email-api" doc:id="46a2b747-98e5-41a7-ac20-08e5440f98f1" config-ref="HTTP_Request_configuration" url="https://send-critical-alert-email-sms-api-qpoccu.5sc6y6-1.usa-e2.cloudhub.io/sendEmailAlert">
+			<http:headers><![CDATA[#[output application/java
+---
+{
+	subject : vars.subject
+}]]]></http:headers>
+		</http:request>
+		<ee:transform doc:name="SMS Payload" doc:id="720f4725-b336-49e7-96d3-35060bcb0081">
+			<ee:message>
+				<ee:set-payload resource="dwl/smsPayload.dwl" />
+			</ee:message>
+		</ee:transform>
+		<http:request method="POST" doc:name="send-sms-api" doc:id="f668612f-4f78-47cf-b325-6e5611edfeb9" config-ref="HTTP_Request_configuration" url="https://send-critical-alert-email-sms-api-qpoccu.5sc6y6-1.usa-e2.cloudhub.io/sendSMSAlert">
+		</http:request>
+		<ee:transform doc:name="To Experience Response" doc:id="88a0961e-da4c-491d-83f6-769f01867b1c">
+			<ee:message>
+				<ee:set-payload><![CDATA[output application/json
+---
+vars.expPayload]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</sub-flow>
+	<flow name="sys-ocr-v1-ocr" doc:id="007f1e6b-231d-4aba-b5af-64ae4f0dcb7c">
+		<http:listener doc:name="Listener" doc:id="0da5d2fb-4d58-4275-9f16-215f70765261" config-ref="HTTP_Listener_config1" path="/sys/ocr/v1/ocr" allowedMethods="POST" />
+		<ee:transform doc:name="Set ocr.sapce body" doc:id="2d48c21d-d246-40dc-997e-55e1a9b23929" >
+			<ee:message >
+				<ee:set-payload resource="dwl/ocr_space_body.dwl" />
+			</ee:message>
+			<ee:variables >
+			</ee:variables>
+		</ee:transform>
+		<http:request method="POST" doc:name="ocr.space request" doc:id="db9c7ccd-30af-4607-80ba-cdcd826193dd" config-ref="OCR_HTTP_Config" url="https://api.ocr.space/parse/image">
+			<http:headers><![CDATA[#[{
+	"apikey" : "K83401522188957"
+}]]]></http:headers>
+				</http:request>
+		<choice doc:name="Choice" doc:id="23a98737-f048-418d-aa58-9b18fe87e0d5" >
+			<when expression="#[payload.ParsedResults[0].ParsedText != null]">
+				<ee:transform doc:name="Extraction" doc:id="4758e2d4-2cfc-4d6c-ad43-e5d1989dac23">
+					<ee:message>
+						<ee:set-payload resource="dwl/extraction.dwl" />
+					
+</ee:message>
+				</ee:transform>
+			
+</when>
+			<otherwise >
+				<logger level="INFO" doc:name="Null values obtained" doc:id="ed55373d-4374-420f-9550-422326e79164" message="Null values obtained. Please check image"/>
+				<raise-error doc:name="Null value" doc:id="ce0bb389-7f03-4451-806d-7dbe1fb9e61d" type="VALIDATION:BAD_REQUEST" description="Null Value obtained from OCR service"/>
+			
+</otherwise>
+		</choice>
+	</flow>
+	<flow name="sys-persist-kyc-api" doc:id="1ef910c1-ac2a-47ec-9050-289ef8148bd7" >
+		<http:listener doc:name="Listener" doc:id="3ab5bcf8-502f-4fc1-8c8a-4656e9e9f952" config-ref="HTTP_Listener_config1" path="/sys/persist/v1/kyc" allowedMethods="POST" />
+		<set-variable value="#[payload]" doc:name="Store payload" doc:id="a75203d9-8d88-4768-b4f9-86295196a0b4" variableName="maskingPayload"/>
+		<set-variable value="#[attributes.headers.docType]" doc:name="document_ref" doc:id="e51b6737-f6e3-418b-bb6f-f3e8936cd52e" variableName="document_ref"/>
+		<set-variable value="#[attributes.headers.accountID as Number]" doc:name="Account_id" doc:id="1fb159fc-74c2-4228-8eae-015582744d91" variableName="Account_id"/>
+		<logger level="INFO" doc:name="BEGIN: DB Update" doc:id="a5d74bd2-e282-4123-b2e4-b05aa9edfb0c" message="BEGIN: DB Update"/>
+		<try doc:name="Try" doc:id="6c9a6318-f21f-4cd3-9f49-c80d584dab24" >
+			<db:select doc:name="SELECT Account_id" doc:id="cc45ed69-9505-498b-90fb-027afe3481ac" config-ref="Database_Config">
+			<db:sql><![CDATA[SELECT Account_id, Mobile_Number
+FROM KYC_Details
+WHERE Account_id = :accountId
+]]></db:sql>
+			<db:input-parameters><![CDATA[#[{
+  "accountId": attributes.headers.accountID
+}]]]></db:input-parameters>
+		</db:select>
+			<ee:transform doc:name="Transform Message" doc:id="1a0e5ed8-bd9e-45d7-993b-751123859301" >
+				<ee:message >
+					<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload]]></ee:set-payload>
+				</ee:message>
+			</ee:transform>
+			<logger level="INFO" doc:name="Logger" doc:id="3a250c6f-5fb0-48f2-9735-8ff201a26b69" message="#[payload]"/>
+			<set-variable value="#[payload.Account_id[0]]" doc:name="DB_Account_id" doc:id="4b9e2be5-63c7-4cf8-85f4-48c96406558d" variableName="DB_Account_id"/>
+			<set-variable value="#[payload.Mobile_Number[0] as Number]" doc:name="Mobile_Number" doc:id="996a136e-139a-49a0-b44f-8ffff95c8f31" variableName="DB_Mobile_Number"/>
+			<choice doc:name="Choice" doc:id="5e349286-de88-4c74-bf35-059fceb4bdcb" >
+				<when expression="#[vars.Account_id == vars.DB_Account_id]">
+					<db:update doc:name="Update DB with Aadhaar details" doc:id="e8086472-ff13-4760-b615-8f55d89121bf" config-ref="Database_Config">
+					<db:sql><![CDATA[UPDATE KYC_Details
+SET
+    Customer_Name   = :customer_name,
+    DOB             = :dob,
+    Gender          = :gender,
+    Document_Ref    = :document_ref,
+    Document_Type   = 'AADHAAR',
+    KYC_Status      = 'IN_PROGRESS',
+    KYC_Updated_At  = NOW()
+WHERE Account_id = :account_id]]></db:sql>
+			<db:input-parameters><![CDATA[#[%dw 2.0
+output application/java
+---
+{
+  account_id    : vars.DB_Account_id,
+  customer_name : vars.maskingPayload.Name,
+  dob           : vars.maskingPayload.DOB,
+  gender        : vars.maskingPayload.Gender,
+  document_ref  : vars.maskingPayload.AadhaarNo
+}]]]></db:input-parameters>
+				</db:update>
+					<logger level="INFO" doc:name="END: DB Update" doc:id="fd8a6d9f-556f-4381-b9b9-84feb0e97105" message="END: DB Update" />
+					<ee:transform doc:name="Acc Details" doc:id="563731f4-fb00-4b00-bda8-325c048585de" >
+						<ee:message >
+							<ee:set-payload resource="dwl/fetchAccDetails.dwl" />
+						</ee:message>
+					</ee:transform>
+				</when>
+				<otherwise >
+					<raise-error doc:name="Raise error" doc:id="95d52674-7e2c-4071-8a72-ce905857c662" type="VALIDATION:BAD_REQUEST" description="AccountID Mismatch" />
+				</otherwise>
+			</choice>
+			<error-handler >
+				<on-error-propagate enableNotifications="true" logException="true" doc:name="On Error Propagate" doc:id="71c82895-aee3-41bd-9fa3-6004feebefbf" >
+					<logger level="ERROR" doc:name="errorMessage" doc:id="d2ca11d0-2eda-4310-b924-cab098e20f9a" message="#[error.errorMessage]"/>
+					<set-payload value='#[error.errorMessage]' doc:name="errorMessage" doc:id="09152f7d-a4fc-4505-88f7-5c36b0125085" />
+				</on-error-propagate>
+			</error-handler>
+		</try>
+		<error-handler ref="error-handlingError_Handler" />
+	
+</flow>
+</mule>
