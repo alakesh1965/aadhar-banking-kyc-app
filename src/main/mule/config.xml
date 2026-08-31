@@ -1,12 +1,13 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<mule xmlns:crypto="http://www.mulesoft.org/schema/mule/crypto"
-	xmlns:db="http://www.mulesoft.org/schema/mule/db" xmlns:http="http://www.mulesoft.org/schema/mule/http"
-	xmlns="http://www.mulesoft.org/schema/mule/core"
-	xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="
+<mule xmlns:secure-properties="http://www.mulesoft.org/schema/mule/secure-properties"
+	xmlns:crypto="http://www.mulesoft.org/schema/mule/crypto" xmlns:db="http://www.mulesoft.org/schema/mule/db"
+	xmlns:http="http://www.mulesoft.org/schema/mule/http"
+	xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="
 http://www.mulesoft.org/schema/mule/db http://www.mulesoft.org/schema/mule/db/current/mule-db.xsd http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
 http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
-http://www.mulesoft.org/schema/mule/crypto http://www.mulesoft.org/schema/mule/crypto/current/mule-crypto.xsd">
+http://www.mulesoft.org/schema/mule/crypto http://www.mulesoft.org/schema/mule/crypto/current/mule-crypto.xsd
+http://www.mulesoft.org/schema/mule/secure-properties http://www.mulesoft.org/schema/mule/secure-properties/current/mule-secure-properties.xsd">
 	<http:listener-config name="HTTP_Listener_config" doc:name="HTTP Listener config" doc:id="9d2b0615-7d81-4085-a728-61d4cb861681" >
 		<http:listener-connection host="${http.internal.host}" port="${http.internal.port}" />
 	</http:listener-config>
@@ -17,11 +18,12 @@ http://www.mulesoft.org/schema/mule/crypto http://www.mulesoft.org/schema/mule/c
 	<http:request-config name="OCR_HTTP_Config" doc:name="HTTP Request configuration" doc:id="d9fb31a3-efc4-486a-819d-8a4f73859c9b" >
 		<http:request-connection host="api.ocr.space" port="443" protocol="HTTPS"/>
 	</http:request-config>
-	<configuration-properties doc:name="Configuration properties" doc:id="58a8a425-443d-4e68-b604-dbee65050212" file="config\exp-baning-kyc.properties" />
+	<configuration-properties doc:name="Configuration properties" doc:id="58a8a425-443d-4e68-b604-dbee65050212" file="config\baning-kyc.properties" />
 	<http:listener-config name="HTTP_Listener_config1" doc:name="HTTP Listener config" doc:id="fb0c28e2-2e20-4b80-8641-b456ebbcfa23" >
 		<http:listener-connection host="0.0.0.0" port="8082" />
 	</http:listener-config>
 	<db:config name="Database_Config" doc:name="Database Config" doc:id="ec8d5c26-dec6-4797-a1d7-8473dbee0d9d" >
-		<db:my-sql-connection host="${db.host}" port="${db.port}" user="${db.user}" password="${db.password}" database="${db.databaseName}" />
+		<db:my-sql-connection host="${db.host}" port="${db.port}" user="${secure::db.user}" password="${secure::db.password}" database="${secure::db.databaseName}" />
 	</db:config>
+	<secure-properties:config name="Secure_Properties_Config" doc:name="Secure Properties Config" doc:id="442f544c-b101-42d1-81db-24db93de8571" file="config\baning-kyc-secure.properties" key="vault.key" />
 </mule>
