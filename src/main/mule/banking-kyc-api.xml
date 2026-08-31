@@ -111,7 +111,7 @@ attributes.headers.accountID]]></ee:set-variable>
 		<logger level="INFO" doc:name="Logger" doc:id="5abb1418-bad5-46d1-9357-2ccf26a9cca0" message="#[payload]" />
 		<parse-template doc:name="Prepare Email Content" doc:id="d1e2cfa2-1e66-4054-9d82-1c38be7c013e" location="templates/email.template" />
 		<logger level="INFO" doc:name="payload for mail" doc:id="db81bffb-215d-4a4c-818c-5aae370e5dce" message="#[payload]" />
-		<http:request method="POST" doc:name="send-email-api" doc:id="46a2b747-98e5-41a7-ac20-08e5440f98f1" config-ref="HTTP_Request_configuration" url="https://send-critical-alert-email-sms-api-qpoccu.5sc6y6-1.usa-e2.cloudhub.io/sendEmailAlert">
+		<http:request method="POST" doc:name="send-email-api" doc:id="46a2b747-98e5-41a7-ac20-08e5440f98f1" config-ref="HTTP_Request_configuration" url="https://send-email-sms-api-wewwb2.5sc6y6-4.usa-e2.cloudhub.io/sendEmailAlert">
 			<http:headers><![CDATA[#[output application/java
 ---
 {
@@ -123,7 +123,7 @@ attributes.headers.accountID]]></ee:set-variable>
 				<ee:set-payload resource="dwl/smsPayload.dwl" />
 			</ee:message>
 		</ee:transform>
-		<http:request method="POST" doc:name="send-sms-api" doc:id="f668612f-4f78-47cf-b325-6e5611edfeb9" config-ref="HTTP_Request_configuration" url="https://send-critical-alert-email-sms-api-qpoccu.5sc6y6-1.usa-e2.cloudhub.io/sendSMSAlert">
+		<http:request method="POST" doc:name="send-sms-api" doc:id="f668612f-4f78-47cf-b325-6e5611edfeb9" config-ref="HTTP_Request_configuration" url="https://send-email-sms-api-wewwb2.5sc6y6-4.usa-e2.cloudhub.io/sendSMSAlert">
 		</http:request>
 		<ee:transform doc:name="To Experience Response" doc:id="88a0961e-da4c-491d-83f6-769f01867b1c">
 			<ee:message>
@@ -142,11 +142,13 @@ vars.expPayload]]></ee:set-payload>
 			<ee:variables >
 			</ee:variables>
 		</ee:transform>
-		<http:request method="POST" doc:name="ocr.space request" doc:id="db9c7ccd-30af-4607-80ba-cdcd826193dd" config-ref="OCR_HTTP_Config" url="https://api.ocr.space/parse/image">
+		<until-successful maxRetries="3" doc:name="Until Successful" doc:id="8761853d-ed3d-4974-92e2-cb3fe9956667" >
+			<http:request method="POST" doc:name="ocr.space request" doc:id="db9c7ccd-30af-4607-80ba-cdcd826193dd" config-ref="OCR_HTTP_Config" url="https://api.ocr.space/parse/image">
 			<http:headers><![CDATA[#[{
-	"apikey" : "K83401522188957"
+	"apikey": "#[p('secure::ocr.space.api.key')]"
 }]]]></http:headers>
 				</http:request>
+		</until-successful>
 		<choice doc:name="Choice" doc:id="23a98737-f048-418d-aa58-9b18fe87e0d5" >
 			<when expression="#[payload.ParsedResults[0].ParsedText != null]">
 				<ee:transform doc:name="Extraction" doc:id="4758e2d4-2cfc-4d6c-ad43-e5d1989dac23">
@@ -163,7 +165,9 @@ vars.expPayload]]></ee:set-payload>
 			
 </otherwise>
 		</choice>
-	</flow>
+		<error-handler ref="error-handlingError_Handler" />
+	
+</flow>
 	<flow name="sys-persist-kyc-api" doc:id="1ef910c1-ac2a-47ec-9050-289ef8148bd7" >
 		<http:listener doc:name="Listener" doc:id="3ab5bcf8-502f-4fc1-8c8a-4656e9e9f952" config-ref="HTTP_Listener_config1" path="/sys/persist/v1/kyc" allowedMethods="POST" />
 		<set-variable value="#[payload]" doc:name="Store payload" doc:id="a75203d9-8d88-4768-b4f9-86295196a0b4" variableName="maskingPayload"/>
@@ -171,7 +175,8 @@ vars.expPayload]]></ee:set-payload>
 		<set-variable value="#[attributes.headers.accountID as Number]" doc:name="Account_id" doc:id="1fb159fc-74c2-4228-8eae-015582744d91" variableName="Account_id"/>
 		<logger level="INFO" doc:name="BEGIN: DB Update" doc:id="a5d74bd2-e282-4123-b2e4-b05aa9edfb0c" message="BEGIN: DB Update"/>
 		<try doc:name="Try" doc:id="6c9a6318-f21f-4cd3-9f49-c80d584dab24" >
-			<db:select doc:name="SELECT Account_id" doc:id="cc45ed69-9505-498b-90fb-027afe3481ac" config-ref="Database_Config">
+			<until-successful maxRetries="3" doc:name="Until Successful" doc:id="83553a99-40f9-4a35-a0f4-01de4b57fb97" >
+				<db:select doc:name="SELECT Account_id" doc:id="cc45ed69-9505-498b-90fb-027afe3481ac" config-ref="Database_Config">
 			<db:sql><![CDATA[SELECT Account_id, Mobile_Number
 FROM KYC_Details
 WHERE Account_id = :accountId
@@ -180,6 +185,7 @@ WHERE Account_id = :accountId
   "accountId": attributes.headers.accountID
 }]]]></db:input-parameters>
 		</db:select>
+			</until-successful>
 			<ee:transform doc:name="Transform Message" doc:id="1a0e5ed8-bd9e-45d7-993b-751123859301" >
 				<ee:message >
 					<ee:set-payload ><![CDATA[%dw 2.0
@@ -193,7 +199,8 @@ payload]]></ee:set-payload>
 			<set-variable value="#[payload.Mobile_Number[0] as Number]" doc:name="Mobile_Number" doc:id="996a136e-139a-49a0-b44f-8ffff95c8f31" variableName="DB_Mobile_Number"/>
 			<choice doc:name="Choice" doc:id="5e349286-de88-4c74-bf35-059fceb4bdcb" >
 				<when expression="#[vars.Account_id == vars.DB_Account_id]">
-					<db:update doc:name="Update DB with Aadhaar details" doc:id="e8086472-ff13-4760-b615-8f55d89121bf" config-ref="Database_Config">
+					<until-successful maxRetries="3" doc:name="Until Successful" doc:id="3f589a75-d61c-4578-bc82-2961cd047646" >
+						<db:update doc:name="Update DB with Aadhaar details" doc:id="e8086472-ff13-4760-b615-8f55d89121bf" config-ref="Database_Config">
 					<db:sql><![CDATA[UPDATE KYC_Details
 SET
     Customer_Name   = :customer_name,
@@ -215,6 +222,7 @@ output application/java
   document_ref  : vars.maskingPayload.AadhaarNo
 }]]]></db:input-parameters>
 				</db:update>
+					</until-successful>
 					<logger level="INFO" doc:name="END: DB Update" doc:id="fd8a6d9f-556f-4381-b9b9-84feb0e97105" message="END: DB Update" />
 					<ee:transform doc:name="Acc Details" doc:id="563731f4-fb00-4b00-bda8-325c048585de" >
 						<ee:message >
